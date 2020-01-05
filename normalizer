@@ -1,0 +1,122 @@
+#!/usr/bin/python
+import sys
+from datetime import datetime, timedelta
+from dateutil.parser import parse
+
+class Row(object):
+    timestamp = None
+    address = None
+    zip = None
+    name = None
+    foo_duration = None
+    bar_duration = None
+    total_duration = None
+    notes = None
+    skip = False
+
+    def __init__(self):
+        self.skip = False
+
+    def __repr__(self):
+        return "{},{},{},{},{},{},{},{}".format(self.timestamp,self.address,self.zip,self.name,self.foo_duration,self.bar_duration,self.total_duration,self.notes)
+
+    def add_name(self, name):
+        self.name = name.upper()
+
+
+    def add_address(self, address):
+        self.address = address
+
+    def add_timestamp(self, timestamp):
+        dt_tz = parse(timestamp) + timedelta(hours=3)
+        self.timestamp = dt_tz.isoformat(' ')
+
+    def add_zip(self, zip):
+        self.zip = str(zip).zfill(5)
+        
+            def add_foo_duration(self, duration):
+        self.foo_duration = time_to_seconds(duration)
+
+    def add_bar_duration(self, duration):
+        self.bar_duration = time_to_seconds(duration)
+
+    def calculate_total_duration(self):
+        if self.bar_duration and self.foo_duration:
+            self.total_duration = self.bar_duration + self.foo_duration
+
+    def add_notes(self, notes):
+        self.notes = notes
+
+def time_to_seconds(duration):
+    hour, minute, sep = duration.split(":")
+    second, milli = sep.split(".")
+    td = timedelta(hours=int(hour), seconds=int(second), minutes=int(minute), milliseconds=int(milli))
+    return td.total_seconds()
+
+def sanitize(value):
+    if not value:
+        return value
+    res = None
+    val = value.decode("utf-8", "replace")
+    try:
+        res = val.encode("utf-8")
+    except UnicodeDecodeError:
+        return None
+    return res
+    
+def parseline(line):
+    res = []
+    res_map = {}
+    quote_flag = False
+    column = []
+    line = line.strip()
+    index = 0
+    for a in line:
+        if a != '"':
+            if a == ',' and not quote_flag:
+                res_map[index] = "".join(column)
+                index += 1
+                column = []
+            else:
+                column.append(a)
+        else:
+            if quote_flag:
+                quote_flag = False
+            else:
+                quote_flag = True
+            column.append(a)
+    res_map[index] = "".join(column)
+    return res_map
+    
+def main():
+    header = True
+    while 1:
+        try:
+            line = sys.stdin.readline()
+        except KeyboardInterrupt:
+            break
+        if not line:
+            break
+        line = sanitize(line)
+        if not line:
+            sys.stderr.write("ERR: Unable to parse utf8, skipping line")
+            continue
+        if not header:
+            row = Row()
+            res = parseline(line)
+            row.add_timestamp(res[0])
+            row.add_address(res[1])
+            row.add_zip(res[2])
+            row.add_name(res[3])
+            row.add_foo_duration(res[4])
+            row.add_bar_duration(res[5])
+            row.calculate_total_duration()
+            row.add_notes(res[7])
+            print row
+        else:
+            header = False
+            print line.strip()
+
+
+if __name__ == "__main__":
+    main()
